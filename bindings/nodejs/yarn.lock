@@ -350,6 +350,21 @@
   resolved "https://registry.npmjs.org/@humanwhocodes/object-schema/-/object-schema-1.2.1.tgz"
   integrity sha512-ZnQMnLV4e7hDlUvw8H+U8ASL02SS2Gn6+9Ac3wGGLIe7+je2AeAOxPY+izIPJDfFDb7eDjev0Us8MO1iFRN8hA==
 
+"@iota/crypto.js@^1.8.6":
+  version "1.8.6"
+  resolved "https://registry.yarnpkg.com/@iota/crypto.js/-/crypto.js-1.8.6.tgz#ce480bdecc3e1a43ac701453c20f533b9472d4e7"
+  integrity sha512-bmsBL+gEJVlT1KgkOqjIkPsyNs5VV9MyrAWo9UAYdGNxfyH+KeYiiRzIaQwwhCzUkncuNzlCTbEo2qRJQoKETg==
+  dependencies:
+    "@iota/util.js" "^1.8.6"
+    big-integer "^1.6.51"
+
+"@iota/util.js@^1.8.6":
+  version "1.8.6"
+  resolved "https://registry.yarnpkg.com/@iota/util.js/-/util.js-1.8.6.tgz#5e320fbeea99bc16167f672607a98c5d1b488ecb"
+  integrity sha512-vQRYU0bDKORGFzeoN2zn7tO4Kjqv+h2P/J//MRspg9Kyy1TKgtGkn0j0M2ZSwJjScH6Cn2BQmRLet/ZBpg6osA==
+  dependencies:
+    big-integer "^1.6.51"
+
 "@istanbuljs/load-nyc-config@^1.0.0":
   version "1.1.0"
   resolved "https://registry.npmjs.org/@istanbuljs/load-nyc-config/-/load-nyc-config-1.1.0.tgz"
@@ -1062,7 +1077,7 @@ bcrypt-pbkdf@^1.0.0:
   dependencies:
     tweetnacl "^0.14.3"
 
-big-integer@^1.6.17:
+big-integer@^1.6.17, big-integer@^1.6.51:
   version "1.6.51"
   resolved "https://registry.npmjs.org/big-integer/-/big-integer-1.6.51.tgz"
   integrity sha512-GPEid2Y9QU1Exl1rpO9B2IPJGHPSupF5GnVIP0blYvNOMer2bTvSWs1jGOUg04hTmu67nmLsQ9TBo1puaotBHg==

@@ -20,6 +20,7 @@
     "author": "IOTA Foundation <contact@iota.org>",
     "license": "Apache-2.0",
     "dependencies": {
+        "@iota/crypto.js": "^1.8.6",
         "@types/node": "^18.15.12",
         "blakejs": "^1.2.1",
         "cargo-cp-artifact": "^0.1.6",

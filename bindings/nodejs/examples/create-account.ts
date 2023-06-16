@@ -7,7 +7,7 @@ import { Wallet, CoinType, initLogger, WalletOptions } from '@iota/sdk';
 require('dotenv').config({ path: '.env' });
 
 // Run with command:
-// yarn run-example ./how_tos/accounts_and_addresses/create-account.ts
+// yarn run-example ./create-account.ts
 
 // This example creates a new database and account
 async function run() {
@@ -34,34 +34,18 @@ async function run() {
         throw new Error('.env WALLET_DB_PATH is undefined, see .env.example');
     }
     try {
-        const walletOptions: WalletOptions = {
+        const wallet = new Wallet({
             storagePath: process.env.WALLET_DB_PATH,
-            clientOptions: {
-                nodes: [process.env.NODE_URL],
-            },
-            coinType: CoinType.Shimmer,
-            secretManager: {
-                stronghold: {
-                    snapshotPath: process.env.STRONGHOLD_SNAPSHOT_PATH,
-                    password: process.env.STRONGHOLD_PASSWORD,
-                },
-            },
-        };
-
-        const wallet = new Wallet(walletOptions);
-
-        // A mnemonic can be generated with `Utils.generateMnemonic()`.
-        // Store the mnemonic in the Stronghold snapshot, this needs to be done only the first time.
-        // The mnemonic can't be retrieved from the Stronghold file, so make a backup in a secure place!
-        await wallet.storeMnemonic(
-            process.env.NON_SECURE_USE_OF_DEVELOPMENT_MNEMONIC_1,
-        );
-
-        // Create a new account
-        const account = await wallet.createAccount({
-            alias: 'Alice',
         });
-        console.log('Generated new account:', account.getMetadata().alias);
+
+        const account = await wallet.getAccount('Alice');
+
+        // To create an address we need to unlock stronghold.
+        await wallet.setStrongholdPassword(process.env.STRONGHOLD_PASSWORD);
+
+        let client = await wallet.getClient();
+        let tx = await client.getBlock("0x5163ab40ca830ed042b6d93c46545bb9e995fda116e6d4030901d9294926b40d");
+        console.log("tx: ", tx);
     } catch (error) {
         console.error('Error: ', error);
     }

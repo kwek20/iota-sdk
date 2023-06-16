@@ -1,7 +1,8 @@
 // Copyright 2020 IOTA Stiftung
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable no-bitwise */
-import { Base64 } from './encoding/base64';
+import { Base64 } from "./encoding/base64";
+import { HexHelper } from "./hex-helper";
 
 /**
  * Convert arrays to and from different formats.
@@ -26,14 +27,10 @@ export class Converter {
      * @param length The length of bytes to read.
      * @returns The array formated as UTF8.
      */
-    public static bytesToUtf8(
-        array: ArrayLike<number>,
-        startIndex?: number,
-        length?: number | undefined,
-    ): string {
+    public static bytesToUtf8(array: ArrayLike<number>, startIndex?: number, length?: number | undefined): string {
         const start = startIndex ?? 0;
         const len = length ?? array.length;
-        let str = '';
+        let str = "";
 
         for (let i = start; i < start + len; i++) {
             const value = array[i];
@@ -41,15 +38,11 @@ export class Converter {
             if (value < 0x80) {
                 str += String.fromCharCode(value);
             } else if (value > 0xbf && value < 0xe0) {
-                str += String.fromCharCode(
-                    ((value & 0x1f) << 6) | (array[i + 1] & 0x3f),
-                );
+                str += String.fromCharCode(((value & 0x1f) << 6) | (array[i + 1] & 0x3f));
                 i += 1;
             } else if (value > 0xdf && value < 0xf0) {
                 str += String.fromCharCode(
-                    ((value & 0x0f) << 12) |
-                        ((array[i + 1] & 0x3f) << 6) |
-                        (array[i + 2] & 0x3f),
+                    ((value & 0x0f) << 12) | ((array[i + 1] & 0x3f) << 6) | (array[i + 2] & 0x3f)
                 );
                 i += 2;
             } else {
@@ -61,10 +54,7 @@ export class Converter {
                         (array[i + 3] & 0x3f)) -
                     0x010000;
 
-                str += String.fromCharCode(
-                    (charCode >> 10) | 0xd800,
-                    (charCode & 0x03ff) | 0xdc00,
-                );
+                str += String.fromCharCode((charCode >> 10) | 0xd800, (charCode & 0x03ff) | 0xdc00);
                 i += 3;
             }
         }
@@ -87,25 +77,19 @@ export class Converter {
             } else if (charcode < 0x800) {
                 bytes.push(0xc0 | (charcode >> 6), 0x80 | (charcode & 0x3f));
             } else if (charcode < 0xd800 || charcode >= 0xe000) {
-                bytes.push(
-                    0xe0 | (charcode >> 12),
-                    0x80 | ((charcode >> 6) & 0x3f),
-                    0x80 | (charcode & 0x3f),
-                );
+                bytes.push(0xe0 | (charcode >> 12), 0x80 | ((charcode >> 6) & 0x3f), 0x80 | (charcode & 0x3f));
             } else {
                 // surrogate pair
                 i++;
                 // UTF-16 encodes 0x10000-0x10FFFF by
                 // subtracting 0x10000 and splitting the
                 // 20 bits of 0x0-0xFFFFF into two halves
-                charcode =
-                    0x10000 +
-                    (((charcode & 0x3ff) << 10) | (utf8.charCodeAt(i) & 0x3ff));
+                charcode = 0x10000 + (((charcode & 0x3ff) << 10) | (utf8.charCodeAt(i) & 0x3ff));
                 bytes.push(
                     0xf0 | (charcode >> 18),
                     0x80 | ((charcode >> 12) & 0x3f),
                     0x80 | ((charcode >> 6) & 0x3f),
-                    0x80 | (charcode & 0x3f),
+                    0x80 | (charcode & 0x3f)
                 );
             }
         }
@@ -116,6 +100,7 @@ export class Converter {
     /**
      * Encode a raw array to hex string.
      * @param array The bytes to encode.
+     * @param includePrefix Include the 0x prefix on the returned hex.
      * @param startIndex The index to start in the bytes.
      * @param length The length of bytes to read.
      * @param reverse Reverse the combine direction.
@@ -123,11 +108,12 @@ export class Converter {
      */
     public static bytesToHex(
         array: ArrayLike<number>,
+        includePrefix: boolean = false,
         startIndex?: number,
         length?: number | undefined,
-        reverse?: boolean,
+        reverse?: boolean
     ): string {
-        let hex = '';
+        let hex = "";
         this.buildHexLookups();
         if (Converter.ENCODE_LOOKUP) {
             const len = length ?? array.length;
@@ -142,7 +128,7 @@ export class Converter {
                 }
             }
         }
-        return hex;
+        return includePrefix ? HexHelper.addPrefix(hex) : hex;
     }
 
     /**
@@ -152,7 +138,8 @@ export class Converter {
      * @returns The array.
      */
     public static hexToBytes(hex: string, reverse?: boolean): Uint8Array {
-        const sizeof = hex.length >> 1;
+        const strippedHex = HexHelper.stripPrefix(hex);
+        const sizeof = strippedHex.length >> 1;
         const length = sizeof << 1;
         const array = new Uint8Array(sizeof);
 
@@ -162,8 +149,8 @@ export class Converter {
             let n = 0;
             while (i < length) {
                 array[n++] =
-                    (Converter.DECODE_LOOKUP[hex.charCodeAt(i++)] << 4) |
-                    Converter.DECODE_LOOKUP[hex.charCodeAt(i++)];
+                    (Converter.DECODE_LOOKUP[strippedHex.charCodeAt(i++)] << 4) |
+                    Converter.DECODE_LOOKUP[strippedHex.charCodeAt(i++)];
             }
 
             if (reverse) {
@@ -176,10 +163,12 @@ export class Converter {
     /**
      * Convert the UTF8 to hex.
      * @param utf8 The text to convert.
+     * @param includePrefix Include the 0x prefix on the returned hex.
      * @returns The hex version of the bytes.
      */
-    public static utf8ToHex(utf8: string): string {
-        return Converter.bytesToHex(Converter.utf8ToBytes(utf8));
+    public static utf8ToHex(utf8: string, includePrefix: boolean = false): string {
+        const hex = Converter.bytesToHex(Converter.utf8ToBytes(utf8));
+        return includePrefix ? HexHelper.addPrefix(hex) : hex;
     }
 
     /**
@@ -188,19 +177,22 @@ export class Converter {
      * @returns The UTF8 version of the bytes.
      */
     public static hexToUtf8(hex: string): string {
-        return Converter.bytesToUtf8(Converter.hexToBytes(hex));
+        return Converter.bytesToUtf8(Converter.hexToBytes(HexHelper.stripPrefix(hex)));
     }
 
     /**
      * Is the data hex format.
      * @param value The value to test.
+     * @param allowPrefix Allow the hex to have the 0x prefix.
      * @returns True if the string is hex.
      */
-    public static isHex(value: string): boolean {
-        if (value.length % 2 === 1) {
+    public static isHex(value: string, allowPrefix: boolean = false): boolean {
+        const localHex = allowPrefix ? HexHelper.stripPrefix(value) : value;
+
+        if (localHex.length % 2 === 1) {
             return false;
         }
-        return /^[\da-f]+$/g.test(value);
+        return /^[\da-f]+$/g.test(localHex);
     }
 
     /**
@@ -211,9 +203,9 @@ export class Converter {
     public static bytesToBinary(bytes: Uint8Array): string {
         const b = [];
         for (let i = 0; i < bytes.length; i++) {
-            b.push(bytes[i].toString(2).padStart(8, '0'));
+            b.push(bytes[i].toString(2).padStart(8, "0"));
         }
-        return b.join('');
+        return b.join("");
     }
 
     /**
@@ -253,13 +245,12 @@ export class Converter {
      */
     private static buildHexLookups(): void {
         if (!Converter.ENCODE_LOOKUP || !Converter.DECODE_LOOKUP) {
-            const alphabet = '0123456789abcdef';
+            const alphabet = "0123456789abcdef";
             Converter.ENCODE_LOOKUP = [];
             Converter.DECODE_LOOKUP = [];
 
             for (let i = 0; i < 256; i++) {
-                Converter.ENCODE_LOOKUP[i] =
-                    alphabet[(i >> 4) & 0xf] + alphabet[i & 0xf];
+                Converter.ENCODE_LOOKUP[i] = alphabet[(i >> 4) & 0xf] + alphabet[i & 0xf];
                 if (i < 16) {
                     if (i < 10) {
                         Converter.DECODE_LOOKUP[0x30 + i] = i;

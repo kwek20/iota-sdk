@@ -5,6 +5,7 @@ import { blake2bInit, blake2bUpdate, blake2bFinal } from 'blakejs';
 
 import { BigIntHelper } from './big-int-helper';
 import {
+    AddressType,
     Block,
     BlockId,
     InputType,
@@ -17,7 +18,11 @@ import {
 import { Utils } from './utils';
 import { WriteStream } from './stream/writeStream';
 import { Converter } from './converter';
-
+import { TRANSACTION_ID_LENGTH, BLOCK_ID_LENGTH } from '../types/binary/commonDataTypes';
+import { serializeTransactionEssence } from '../types/binary/transactionEssence';
+import { serializeTransactionPayload } from '../types/binary/payloads/transactionPayload';
+import { ReadStream } from './stream/readStream';
+import { serializeOutput } from '../types/binary/outputs/outputs';
 /**
  * Helper methods for Transactions.
  */
@@ -97,7 +102,7 @@ export class TransactionHelper {
         serializeTransactionEssence(writeStream, essence);
         const essenceFinal = writeStream.finalBytes();
 
-        return Blake2b.sum256(essenceFinal);
+        return TransactionHelper.sum256(essenceFinal);
     }
 
     /**
@@ -111,7 +116,7 @@ export class TransactionHelper {
         const writeStream = new WriteStream();
         serializeTransactionPayload(writeStream, transactionPayload);
         const txBytes = writeStream.finalBytes();
-        return Blake2b.sum256(txBytes);
+        return TransactionHelper.sum256(txBytes);
     }
 
     /**
@@ -121,14 +126,12 @@ export class TransactionHelper {
      */
     public static inputFromOutputId(outputId: string): UTXOInput {
         const readStream = new ReadStream(Converter.hexToBytes(outputId));
-        const input: UTXOInput = {
-            type: InputType.UTXO,
-            transactionId: readStream.readFixedHex(
+        const input: UTXOInput = new UTXOInput(readStream.readFixedHex(
                 'transactionId',
                 TRANSACTION_ID_LENGTH,
             ),
-            transactionOutputIndex: readStream.readUInt16('outputIndex'),
-        };
+            readStream.readUInt16('outputIndex'),
+        );
         return input;
     }
 
@@ -138,16 +141,14 @@ export class TransactionHelper {
      * @returns The inputs commitment.
      */
     public static getInputsCommitment(inputs: Output[]): string {
-        const inputsCommitmentHasher = new Blake2b(Blake2b.SIZE_256); // blake2b hasher
+        const inputsCommitmentHasher = blake2bInit(32); // blake2b hasher
         for (let i = 0; i < inputs.length; i++) {
             const writeStream = new WriteStream();
             serializeOutput(writeStream, inputs[i]);
-            inputsCommitmentHasher.update(
-                Blake2b.sum256(writeStream.finalBytes()),
-            );
+            blake2bUpdate(inputsCommitmentHasher, TransactionHelper.sum256(writeStream.finalBytes()));
         }
 
-        return Converter.bytesToHex(inputsCommitmentHasher.final(), true);
+        return Converter.bytesToHex(blake2bFinal(inputsCommitmentHasher), true);
     }
 
     /**
@@ -202,7 +203,7 @@ export class TransactionHelper {
     ): string {
         const wsAddress = new WriteStream();
         serializeAliasAddress(wsAddress, {
-            type: ALIAS_ADDRESS_TYPE,
+            type: AddressType.Alias,
             aliasId,
         });
         const aliasAddressBytes = wsAddress.finalBytes();
@@ -236,3 +237,7 @@ export class TransactionHelper {
         return BigIntHelper.read8(networkIdBytes, 0).toString();
     }
 }
+function serializeAliasAddress(wsAddress: WriteStream, arg1: { type: any; aliasId: string; }) {
+    throw new Error('Function not implemented.');
+}
+

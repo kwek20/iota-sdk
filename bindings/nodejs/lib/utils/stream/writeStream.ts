@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 /* eslint-disable no-bitwise */
 /* eslint-disable no-mixed-operators */
-import type { BigInteger } from 'big-integer';
-import { BigIntHelper } from '../big-int-helper';
-import { Converter } from '../converter';
+import type { BigInteger } from "big-integer";
+import { BigIntHelper } from "../big-int-helper";
+import { Converter } from "../converter";
+import { HexHelper } from "../hex-helper";
 
 /**
  * Keep track of the write index within a stream.
@@ -65,9 +66,7 @@ export class WriteStream {
      * @returns The final stream as hex.
      */
     public finalHex(): string {
-        return Converter.bytesToHex(
-            this._storage.subarray(0, this._writeIndex),
-        );
+        return Converter.bytesToHex(this._storage.subarray(0, this._writeIndex));
     }
 
     /**
@@ -87,7 +86,7 @@ export class WriteStream {
 
         if (writeIndex >= this._storage.length) {
             throw new Error(
-                `You cannot set the writeIndex to ${writeIndex} as the stream is only ${this._storage.length} in length`,
+                `You cannot set the writeIndex to ${writeIndex} as the stream is only ${this._storage.length} in length`
             );
         }
     }
@@ -99,22 +98,20 @@ export class WriteStream {
      * @param val The data to write.
      */
     public writeFixedHex(name: string, length: number, val: string): void {
-        if (!Converter.isHex(val)) {
+        const strippedVal = HexHelper.stripPrefix(val);
+
+        if (!Converter.isHex(strippedVal)) {
             throw new Error(`The ${name} should be in hex format`);
         }
 
         // Hex should be twice the length as each byte is 2 characters
-        if (length * 2 !== val.length) {
-            throw new Error(
-                `${name} length ${val.length} does not match expected length ${
-                    length * 2
-                }`,
-            );
+        if (length * 2 !== strippedVal.length) {
+            throw new Error(`${name} length ${strippedVal.length} does not match expected length ${length * 2}`);
         }
 
         this.expand(length);
 
-        this._storage.set(Converter.hexToBytes(val), this._writeIndex);
+        this._storage.set(Converter.hexToBytes(strippedVal), this._writeIndex);
         this._writeIndex += length;
     }
 
@@ -136,7 +133,7 @@ export class WriteStream {
      * @param name The name of the data we are trying to write.
      * @param val The data to write.
      */
-    public writeByte(name: string, val: number): void {
+    public writeUInt8(name: string, val: number): void {
         this.expand(1);
 
         this._storage[this._writeIndex++] = val & 0xff;
@@ -182,6 +179,19 @@ export class WriteStream {
     }
 
     /**
+     * Write a UInt256 to the stream.
+     * @param name The name of the data we are trying to write.
+     * @param val The data to write.
+     */
+    public writeUInt256(name: string, val: BigInteger): void {
+        this.expand(32);
+
+        BigIntHelper.write32(val, this._storage, this._writeIndex);
+
+        this._writeIndex += 32;
+    }
+
+    /**
      * Write a boolean to the stream.
      * @param name The name of the data we are trying to write.
      * @param val The data to write.
@@ -199,9 +209,7 @@ export class WriteStream {
     private expand(additional: number): void {
         if (this._writeIndex + additional > this._storage.byteLength) {
             const newArr = new Uint8Array(
-                this._storage.length +
-                    Math.ceil(additional / WriteStream.CHUNK_SIZE) *
-                        WriteStream.CHUNK_SIZE,
+                this._storage.length + Math.ceil(additional / WriteStream.CHUNK_SIZE) * WriteStream.CHUNK_SIZE
             );
             newArr.set(this._storage, 0);
             this._storage = newArr;
